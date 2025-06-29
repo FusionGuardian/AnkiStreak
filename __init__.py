@@ -5,37 +5,6 @@ from .logic.streak_manager import get_streak_manager
 from .hooks.toolbar import setup_toolbar
 from .ui.streak_popup import open_streak_popup_with_manager
 from .ui.review_popup import StreakAnimationPopup
-from .ui.icon import get_base64_icon_data
-
-def update_streak_text(streak_manager):
-    if not mw.col:
-        return
-
-    current_streak = streak_manager.get_current_streak_length()
-
-    if streak_manager.has_reviewed_today():
-        icon_data_uri = get_base64_icon_data("streak")
-        icon_color_style = "color:orange;"
-    else:
-        icon_data_uri = get_base64_icon_data("grey_streak")
-        icon_color_style = "color:#888888;"
-
-    mw.streak_button_text = (
-        f"<img src='{icon_data_uri}' style='height:20px; vertical-align:middle;' /> "
-        f"<span style='font-weight:bold; font-size:16px; position:relative; top:2px; {icon_color_style}'>"
-        f"{current_streak}</span>"
-    )
-
-    freezes_available = streak_manager.get_streak_freezes_available()
-    max_freezes = streak_manager.MAX_STREAK_FREEZES
-
-    mw.freeze_button_text = (
-        f"<img src='{get_base64_icon_data('frozen_streak')}' style='height:20px; vertical-align:middle;' /> "
-        f"<span style='font-weight:bold; font-size:16px; position:relative; top:2px; color:#9BDDFD'>"
-        f"{freezes_available}</span>"
-    )
-
-    mw.toolbar.draw()
 
 DEBUG_FORCE_ANIMATION_POPUP = False
 
@@ -50,7 +19,6 @@ def _on_profile_open():
     try:
         streak_manager = get_streak_manager()
         streak_manager.recalculate_streak()
-        update_streak_text(streak_manager)
     except Exception as e:
         print(f"AnkiStreak: Error on profile open: {e}")
 
@@ -59,9 +27,7 @@ gui_hooks.profile_did_open.append(_on_profile_open)
 def _on_sync_finish():
     try:
         streak_manager = get_streak_manager()
-        streak_manager.recalculate_streak()
         streak_manager.update_reviews_on_sync()
-        update_streak_text(streak_manager)
     except Exception as e:
         print(f"AnkiStreak: Error after sync: {e}")
 
@@ -74,7 +40,6 @@ def show_streak_animation(*args, **kwargs):
 
         reviews_today = streak_manager.get_review_count_for_date(today)
         current_streak = streak_manager.get_current_streak_length()
-        update_streak_text(streak_manager)
 
         should_show = False
         if DEBUG_FORCE_ANIMATION_POPUP:
@@ -91,6 +56,5 @@ def show_streak_animation(*args, **kwargs):
 
 gui_hooks.reviewer_did_answer_card.append(show_streak_animation)
 
-# Open streak stats popup manually
 def open_streak_popup():
     open_streak_popup_with_manager(mw)
