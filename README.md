@@ -59,4 +59,4 @@ Contributions are welcome! If you have ideas for new features, bug fixes, or imp
 
 ## License
 
-This project is licensed under the [MIT LICENSE](LICENSE).
+This project is licensed under the [MIT LICENSE.](LICENSE)
