@@ -21,11 +21,11 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 ## Installation
 
 1. Download Anki and [create an account]((https://ankiweb.net/)) if you don't have one already.
-2. Go to the AnkiStreak page on [AnkiWeb Add-ons](https://ankiweb.net/shared/addons/).
+2. Go to the [AnkiStreak](https://ankiweb.net/shared/info/392667675) page on [AnkiWeb Add-ons](https://ankiweb.net/shared/addons/).
 3. Find the download code under the "Download" section.
 4.  Open Anki on your desktop.
 5.  Go to **Tools** -> **Add-ons**.
-6.  Click **Get Add-ons...** and paste the code from AnkiWeb.
+6.  Click **Get Add-ons...** and paste the code from AnkiWeb (`392667675`).
 7.  Restart Anki.
 
 ## How to Use
