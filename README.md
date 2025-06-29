@@ -55,7 +55,7 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 
 ## Contributing
 
-Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, please feel free to open an issue or submit a pull request .
+Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, please feel free to open an issue or submit a pull request.
 
 ## License
 
