@@ -23,6 +23,10 @@ class StreakManager:
 
         gui_hooks.profile_did_open.append(self.recalculate_streak)
         gui_hooks.reviewer_did_answer_card.append(self.update_streak_for_review)
+        gui_hooks.sync_did_finish.append(self.update_reviews_on_sync)
+
+        if self.mw and self.mw.col:
+            self.recalculate_streak()
 
     def _load_data(self):
         default_data = {
@@ -34,39 +38,31 @@ class StreakManager:
             "last_sync_reviews_today_count": 0,
             "last_sync_date": None
         }
-        if self.mw and self.mw.col:
-            data = self.mw.col.get_config(self.CONFIG_KEY, default_data)
-            data.setdefault("current_streak_length", 0)
-            data.setdefault("last_active_day", None)
-            data.setdefault("streak_freezes_available", self.MAX_STREAK_FREEZES)
-            data.setdefault("consumed_freeze_dates", [])
-            data.setdefault("reviews_since_last_freeze", 0)
-            data.setdefault("last_sync_reviews_today_count", 0)
-            data.setdefault("last_sync_date", None)
-            data["consumed_freeze_dates"].sort()
-            return data
-        else:
-            print("AnkiStreak: Warning: Collection not available during _load_data. Returning default.")
-            return default_data
+        data = self.mw.col.get_config(self.CONFIG_KEY, default_data)
+        data.setdefault("current_streak_length", 0)
+        data.setdefault("last_active_day", None)
+        data.setdefault("streak_freezes_available", self.MAX_STREAK_FREEZES)
+        data.setdefault("consumed_freeze_dates", [])
+        data.setdefault("reviews_since_last_freeze", 0)
+        data.setdefault("last_sync_reviews_today_count", 0)
+        data.setdefault("last_sync_date", None)
+        data["consumed_freeze_dates"].sort()
+        return data
 
     def _save_data(self):
-        if self.mw and self.mw.col:
-            self.mw.col.set_config(self.CONFIG_KEY, self.data)
-        else:
-            print("AnkiStreak: Warning: Attempted to save data before collection was loaded.")
+        self.mw.col.set_config(self.CONFIG_KEY, self.data)
 
     def add_streak_freeze(self, count: int = 1):
         if self.data is None:
-            print("AnkiStreak: Warning: Data not loaded yet. Cannot add streak freeze.")
             return
 
         self.data["streak_freezes_available"] = min(self.data["streak_freezes_available"] + count,
                                                     self.MAX_STREAK_FREEZES)
         self._save_data()
+        self._update_toolbar()
 
     def consume_streak_freeze(self, date_str: str):
         if self.data is None:
-            print("AnkiStreak: Warning: Data not loaded yet. Cannot consume streak freeze.")
             return False
 
         if self.data["streak_freezes_available"] > 0 and date_str not in self.data["consumed_freeze_dates"]:
@@ -74,6 +70,7 @@ class StreakManager:
             self.data["consumed_freeze_dates"].append(date_str)
             self.data["consumed_freeze_dates"].sort()
             self._save_data()
+            self._update_toolbar()
             return True
         return False
 
@@ -105,6 +102,7 @@ class StreakManager:
                 self.data["current_streak_length"] = 0
                 self.data["last_active_day"] = None
                 self._save_data()
+                self._update_toolbar() # Update toolbar when streak resets to 0
                 return
 
         check_date = start_date_for_calc
@@ -128,12 +126,40 @@ class StreakManager:
 
             check_date -= timedelta(days=1)
             if (start_date_for_calc - check_date).days > 365 * 10:
-                print("AnkiStreak: Streak recalculation hit safety limit (10 years).")
-                break
+                break # Safety break
 
         self.data["current_streak_length"] = calculated_streak
         self.data["last_active_day"] = last_active_day_obj.strftime("%Y-%m-%d") if last_active_day_obj else None
         self._save_data()
+        self._update_toolbar()
+
+    def _update_toolbar(self):
+        from ..ui.icon import get_base64_icon_data # Local import for icons
+
+        current_streak = self.data["current_streak_length"]
+
+        if self.has_reviewed_today():
+            icon_data_uri = get_base64_icon_data("streak")
+            icon_color_style = "color:orange;"
+        else:
+            icon_data_uri = get_base64_icon_data("grey_streak")
+            icon_color_style = "color:#888888;"
+
+        self.mw.streak_button_text = (
+            f"<img src='{icon_data_uri}' style='height:20px; vertical-align:middle;' /> "
+            f"<span style='font-weight:bold; font-size:16px; position:relative; top:2px; {icon_color_style}'>"
+            f"{current_streak}</span>"
+        )
+
+        freezes_available = self.data["streak_freezes_available"]
+
+        self.mw.freeze_button_text = (
+            f"<img src='{get_base64_icon_data('frozen_streak')}' style='height:20px; vertical-align:middle;' /> "
+            f"<span style='font-weight:bold; font-size:16px; position:relative; top:2px; color:#9BDDFD'>"
+            f"{freezes_available}</span>"
+        )
+
+        self.mw.toolbar.draw()
 
     def get_current_streak_length(self) -> int:
         if self.data is None:
@@ -242,10 +268,11 @@ class StreakManager:
             self.data["reviews_since_last_freeze"] = 0
             self._save_data()
 
+        self.recalculate_streak()
+
     def update_streak_for_review(self, *args: Any, **kwargs: Any):
         if self.data is None:
             self.data = self._load_data()
-            print("AnkiStreak: Data loaded for update_streak_for_review due to prior uninitialized access.")
 
         today_str = datetime.today().date().strftime("%Y-%m-%d")
 
@@ -266,7 +293,5 @@ def get_streak_manager() -> StreakManager:
         try:
             _global_streak_manager_instance = StreakManager(mw)
         except NameError:
-            print("AnkiStreak: Warning: 'mw' not available yet for StreakManager initialization. "
-                  "Deferring full setup until profile_did_open hook.")
             _global_streak_manager_instance = StreakManager(None)
     return _global_streak_manager_instance
