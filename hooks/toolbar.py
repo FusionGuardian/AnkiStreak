@@ -10,8 +10,7 @@ def setup_toolbar():
         link = toolbar.create_link(name, label, callback, tip)
         return link.replace(
             '<a ',
-            f'<a class="{class_name}" style="text-decoration:none; padding:4px; align-items:center; gap:4px; border-radius:4px;" ',
-            1
+            f'<a class="{class_name}" style="text-decoration:none; padding:4px; align-items:center; gap:4px; border-radius:4px;" ', 1
         )
 
     def on_top_toolbar_did_init_links(links: list[str], toolbar: Toolbar):
