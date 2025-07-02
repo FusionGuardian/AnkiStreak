@@ -44,7 +44,7 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 
 *   The first time you run the add-on, it scans your entire Anki review history (`revlog`) to build a complete record of all past days you've studied. This history is stored in a local `streak_history.json` file within the add-on's folder and updated on Anki restarts and syncs.
 
-*   **Streak Recalculation:**  The streak is recalculated on whenever Anki syncs or resets. The logic works backward through each day, checking if:
+*   **Streak Recalculation:**  The streak is recalculated whenever Anki syncs or resets. The logic works backward through each day, checking if:
     1.  The day has at least one review.
     2.  A streak freeze was automatically consumed that day.
 
