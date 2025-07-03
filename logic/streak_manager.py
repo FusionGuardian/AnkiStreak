@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, date
 from aqt import mw, gui_hooks, AnkiQt
 from .streak_history_manager import StreakHistoryManager
-from typing import Union, Any
+from typing import Union, Any, List
 
-MAX_STREAK_FREEZES_CONSTANT = 2
+MAX_STREAK_FREEZES = 2
+REVIEWS_PER_FREEZE = 1000
+
 
 class StreakManager:
     _instance = None
@@ -17,7 +19,7 @@ class StreakManager:
 
     def _initialize(self, main_window: AnkiQt):
         self.mw = main_window
-        self.MAX_STREAK_FREEZES = MAX_STREAK_FREEZES_CONSTANT
+        self.MAX_STREAK_FREEZES = MAX_STREAK_FREEZES
         self.streak_history = StreakHistoryManager()
         self.data = None
 
@@ -32,7 +34,7 @@ class StreakManager:
         default_data = {
             "current_streak_length": 0,
             "last_active_day": None,
-            "streak_freezes_available": self.MAX_STREAK_FREEZES,
+            "earned_freeze_dates": [],
             "consumed_freeze_dates": [],
             "reviews_since_last_freeze": 0,
             "last_sync_reviews_today_count": 0,
@@ -41,38 +43,65 @@ class StreakManager:
         data = self.mw.col.get_config(self.CONFIG_KEY, default_data)
         data.setdefault("current_streak_length", 0)
         data.setdefault("last_active_day", None)
-        data.setdefault("streak_freezes_available", self.MAX_STREAK_FREEZES)
+        # Handle migration from old 'streak_freezes_available' if it exists
+        if "streak_freezes_available" in data and not data.get("earned_freeze_dates"):
+            for _ in range(data["streak_freezes_available"]):
+                data["earned_freeze_dates"].append(datetime.today().date().strftime("%Y-%m-%d"))
+            del data["streak_freezes_available"]
+
+        data.setdefault("earned_freeze_dates", [])
         data.setdefault("consumed_freeze_dates", [])
         data.setdefault("reviews_since_last_freeze", 0)
         data.setdefault("last_sync_reviews_today_count", 0)
         data.setdefault("last_sync_date", None)
+
+        data["earned_freeze_dates"].sort()
         data["consumed_freeze_dates"].sort()
         return data
 
     def _save_data(self):
-        self.mw.col.set_config(self.CONFIG_KEY, self.data)
+        if self.mw and self.mw.col and self.data:
+            self.mw.col.set_config(self.CONFIG_KEY, self.data)
 
     def add_streak_freeze(self, count: int = 1):
         if self.data is None:
             return
 
-        self.data["streak_freezes_available"] = min(self.data["streak_freezes_available"] + count,
-                                                    self.MAX_STREAK_FREEZES)
+        today_str = datetime.today().date().strftime("%Y-%m-%d")
+        for _ in range(count):
+            if len(self.data["earned_freeze_dates"]) < self.MAX_STREAK_FREEZES:
+                self.data["earned_freeze_dates"].append(today_str)
+            else:
+                break
+        self.data["earned_freeze_dates"].sort()
         self._save_data()
         self._update_toolbar()
 
-    def consume_streak_freeze(self, date_str: str):
+    def consume_streak_freeze(self, date_to_cover_str: str) -> bool:
         if self.data is None:
             return False
 
-        if self.data["streak_freezes_available"] > 0 and date_str not in self.data["consumed_freeze_dates"]:
-            self.data["streak_freezes_available"] -= 1
-            self.data["consumed_freeze_dates"].append(date_str)
+        date_to_cover_obj = datetime.strptime(date_to_cover_str, "%Y-%m-%d").date()
+
+        found_index = -1
+        for i, earned_date_str in enumerate(self.data["earned_freeze_dates"]):
+            earned_date_obj = datetime.strptime(earned_date_str, "%Y-%m-%d").date()
+            if earned_date_obj <= date_to_cover_obj:
+                found_index = i
+                break
+
+        if found_index != -1 and date_to_cover_str not in self.data["consumed_freeze_dates"]:
+            self.data["earned_freeze_dates"].pop(found_index)  # Remove the used freeze
+            self.data["consumed_freeze_dates"].append(date_to_cover_str)
             self.data["consumed_freeze_dates"].sort()
             self._save_data()
             self._update_toolbar()
             return True
         return False
+
+    def _is_day_active(self, check_date: date, actual_reviewed_dates: set, current_consumed_freezes: set) -> bool:
+        date_str = check_date.strftime("%Y-%m-%d")
+        return date_str in actual_reviewed_dates or date_str in current_consumed_freezes
 
     def recalculate_streak(self):
         if self.data is None:
@@ -84,28 +113,34 @@ class StreakManager:
         today = datetime.today().date()
         yesterday = today - timedelta(days=1)
 
-        today_is_active = today.strftime("%Y-%m-%d") in actual_reviewed_dates or \
-                          today.strftime("%Y-%m-%d") in current_consumed_freezes
+        today_is_active = self._is_day_active(today, actual_reviewed_dates, current_consumed_freezes)
 
         calculated_streak = 0
-        last_active_day_obj = None
+        final_last_active_day_obj = None
 
-        start_date_for_calc = None
         if today_is_active:
-            start_date_for_calc = today
+            final_last_active_day_obj = today
+            calculated_streak = 1
+            check_date = yesterday
         else:
-            yesterday_is_active = yesterday.strftime("%Y-%m-%d") in actual_reviewed_dates or \
-                                  yesterday.strftime("%Y-%m-%d") in current_consumed_freezes
-            if yesterday_is_active:
-                start_date_for_calc = yesterday
+            yesterday_is_active = self._is_day_active(yesterday, actual_reviewed_dates, current_consumed_freezes)
+            if not yesterday_is_active:
+                if self.consume_streak_freeze(yesterday.strftime("%Y-%m-%d")):
+                    current_consumed_freezes.add(yesterday.strftime("%Y-%m-%d"))
+                    final_last_active_day_obj = yesterday
+                    calculated_streak = 1
+                    check_date = yesterday - timedelta(days=1)
+                else:
+                    self.data["current_streak_length"] = 0
+                    self.data["last_active_day"] = None
+                    self._save_data()
+                    self._update_toolbar()
+                    return
             else:
-                self.data["current_streak_length"] = 0
-                self.data["last_active_day"] = None
-                self._save_data()
-                self._update_toolbar() # Update toolbar when streak resets to 0
-                return
+                final_last_active_day_obj = yesterday
+                calculated_streak = 1
+                check_date = yesterday - timedelta(days=1)
 
-        check_date = start_date_for_calc
         while True:
             date_str = check_date.strftime("%Y-%m-%d")
 
@@ -114,27 +149,25 @@ class StreakManager:
 
             if is_reviewed or is_frozen:
                 calculated_streak += 1
-                last_active_day_obj = check_date
             else:
-                if self.data["streak_freezes_available"] > 0:
-                    self.consume_streak_freeze(date_str)
-                    current_consumed_freezes.add(date_str)
-                    calculated_streak += 1
-                    last_active_day_obj = check_date
-                else:
-                    break
+                break
 
             check_date -= timedelta(days=1)
-            if (start_date_for_calc - check_date).days > 365 * 10:
-                break # Safety break
+            if calculated_streak > 365 * 10:
+                break
 
         self.data["current_streak_length"] = calculated_streak
-        self.data["last_active_day"] = last_active_day_obj.strftime("%Y-%m-%d") if last_active_day_obj else None
+        # final_last_active_day_obj represents the most recent day in the streak
+        self.data["last_active_day"] = final_last_active_day_obj.strftime(
+            "%Y-%m-%d") if final_last_active_day_obj else None
         self._save_data()
         self._update_toolbar()
 
     def _update_toolbar(self):
-        from ..ui.icon import get_base64_icon_data # Local import for icons
+        from ..ui.icon import get_base64_icon_data
+
+        if not self.data:
+            self.data = self._load_data()
 
         current_streak = self.data["current_streak_length"]
 
@@ -151,7 +184,7 @@ class StreakManager:
             f"{current_streak}</span>"
         )
 
-        freezes_available = self.data["streak_freezes_available"]
+        freezes_available = len(self.data["earned_freeze_dates"])
 
         self.mw.freeze_button_text = (
             f"<img src='{get_base64_icon_data('frozen_streak')}' style='height:20px; vertical-align:middle;' /> "
@@ -159,7 +192,8 @@ class StreakManager:
             f"{freezes_available}</span>"
         )
 
-        self.mw.toolbar.draw()
+        if hasattr(self.mw, 'toolbar'):
+            self.mw.toolbar.draw()
 
     def get_current_streak_length(self) -> int:
         if self.data is None:
@@ -169,12 +203,17 @@ class StreakManager:
     def get_streak_freezes_available(self) -> int:
         if self.data is None:
             self.recalculate_streak()
-        return self.data["streak_freezes_available"] if self.data else 0
+        return len(self.data["earned_freeze_dates"]) if self.data else 0
 
-    def get_consumed_freeze_dates(self) -> list[str]:
+    def get_consumed_freeze_dates(self) -> List[str]:
         if self.data is None:
             self.recalculate_streak()
         return self.data["consumed_freeze_dates"] if self.data else []
+
+    def get_earned_freeze_dates(self) -> List[str]:
+        if self.data is None:
+            self.recalculate_streak()
+        return self.data["earned_freeze_dates"] if self.data else []
 
     def get_last_active_day(self) -> Union[str, None]:
         if self.data is None:
@@ -213,23 +252,19 @@ class StreakManager:
         end_ts = int(end_dt.timestamp())
 
         query = """
-            SELECT
-                d.name,
-                COUNT(r.id),
-                SUM(r.time)
-            FROM
-                revlog r
-            JOIN
-                cards c ON r.cid = c.id
-            JOIN
-                decks d ON c.did = d.id
-            WHERE
-                r.id >= ? AND r.id < ?
-            GROUP BY
-                d.name
-            ORDER BY
-                d.name
-        """
+                SELECT d.name, \
+                       COUNT(r.id), \
+                       SUM(r.time)
+                FROM revlog r \
+                         JOIN \
+                     cards c ON r.cid = c.id \
+                         JOIN \
+                     decks d ON c.did = d.id
+                WHERE r.id >= ? \
+                  AND r.id < ?
+                GROUP BY d.name
+                ORDER BY d.name \
+                """
         results = self.mw.col.db.all(query, start_ts * 1000, end_ts * 1000)
 
         details = {}
@@ -263,7 +298,7 @@ class StreakManager:
         self.data["last_sync_reviews_today_count"] = current_reviews_today
         self._save_data()
 
-        if self.data["reviews_since_last_freeze"] >= 1000:
+        if self.data["reviews_since_last_freeze"] >= REVIEWS_PER_FREEZE:
             self.add_streak_freeze(1)
             self.data["reviews_since_last_freeze"] = 0
             self._save_data()
@@ -279,13 +314,16 @@ class StreakManager:
         self.streak_history.add_day(today_str)
 
         self.data["reviews_since_last_freeze"] = self.data.get("reviews_since_last_freeze", 0) + 1
-        if self.data["reviews_since_last_freeze"] >= 1000:
+        if self.data["reviews_since_last_freeze"] >= REVIEWS_PER_FREEZE:
             self.add_streak_freeze(1)
             self.data["reviews_since_last_freeze"] = 0
+            self._save_data()
 
         self.recalculate_streak()
 
+
 _global_streak_manager_instance = None
+
 
 def get_streak_manager() -> StreakManager:
     global _global_streak_manager_instance
