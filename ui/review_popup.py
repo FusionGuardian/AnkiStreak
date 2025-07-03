@@ -128,20 +128,29 @@ class NumberAnimationWidget(QWidget):
         self.old_streak_number_label.setGraphicsEffect(self.old_number_opacity_effect)
         self.old_number_opacity_effect.setOpacity(1.0)
 
+        self.new_number_opacity_effect = QGraphicsOpacityEffect(self.new_streak_number_label)
+        self.new_streak_number_label.setGraphicsEffect(self.new_number_opacity_effect)
+        self.new_number_opacity_effect.setOpacity(0.0)
+
         self.old_streak_number_label.repaint()
         self.new_streak_number_label.repaint()
 
     def get_number_animation_group(self):
         if self.previous_streak != self.current_streak:
+            self.new_streak_number_label.hide()
+            self.new_streak_number_label.move(self.new_streak_number_label.x(), -self.height())
+
+            common_easing_curve = QEasingCurve.Type.OutQuad
+
             self.old_number_pos_animation = QPropertyAnimation(self.old_streak_number_label, b"pos")
-            self.old_number_pos_animation.setDuration(600)
+            self.old_number_pos_animation.setDuration(1000)
             self.old_number_pos_animation.setStartValue(QPoint(self.old_streak_number_label.x(), 0))
             self.old_number_pos_animation.setEndValue(QPoint(self.old_streak_number_label.x(), self.height()))
-            self.old_number_pos_animation.setEasingCurve(QEasingCurve.Type.InQuad)
+            self.old_number_pos_animation.setEasingCurve(common_easing_curve)
             self.old_number_pos_animation.finished.connect(self.old_streak_number_label.hide)
 
             self.old_number_opacity_animation = QPropertyAnimation(self.old_number_opacity_effect, b"opacity")
-            self.old_number_opacity_animation.setDuration(600)
+            self.old_number_opacity_animation.setDuration(1000)
             self.old_number_opacity_animation.setStartValue(1.0)
             self.old_number_opacity_animation.setEndValue(0.0)
             self.old_number_opacity_animation.setEasingCurve(QEasingCurve.Type.OutQuad)
@@ -150,17 +159,28 @@ class NumberAnimationWidget(QWidget):
             old_number_group.addAnimation(self.old_number_pos_animation)
             old_number_group.addAnimation(self.old_number_opacity_animation)
 
-            self.new_number_animation = QPropertyAnimation(self.new_streak_number_label, b"pos")
-            self.new_number_animation.setDuration(600)
-            self.new_number_animation.setStartValue(QPoint(self.new_streak_number_label.x(), -self.height()))
-            self.new_number_animation.setEndValue(QPoint(self.new_streak_number_label.x(), 0))
-            self.new_number_animation.setEasingCurve(QEasingCurve.Type.OutQuad)
+            self.new_number_pos_animation = QPropertyAnimation(self.new_streak_number_label, b"pos")
+            self.new_number_pos_animation.setDuration(1000)
+            self.new_number_pos_animation.setStartValue(QPoint(self.new_streak_number_label.x(), -self.height()))
+            self.new_number_pos_animation.setEndValue(QPoint(self.new_streak_number_label.x(), 0))
+            self.new_number_pos_animation.setEasingCurve(common_easing_curve)
+
+            self.new_number_opacity_animation = QPropertyAnimation(self.new_number_opacity_effect, b"opacity")
+            self.new_number_opacity_animation.setDuration(1000)
+            self.new_number_opacity_animation.setStartValue(0.0)
+            self.new_number_opacity_animation.setEndValue(1.0)
+            self.new_number_opacity_animation.setEasingCurve(QEasingCurve.Type.OutQuad)
+
+            new_number_group = QParallelAnimationGroup()
+            new_number_group.addAnimation(self.new_number_pos_animation)
+            new_number_group.addAnimation(self.new_number_opacity_animation)
+
+            self.new_streak_number_label.show()
 
             number_slide_group = QParallelAnimationGroup()
             number_slide_group.addAnimation(old_number_group)
-            number_slide_group.addAnimation(self.new_number_animation)
+            number_slide_group.addAnimation(new_number_group)
 
-            self.new_streak_number_label.show()
             return number_slide_group
 
         else:
@@ -172,10 +192,12 @@ class NumberAnimationWidget(QWidget):
                 self.height()
             )
             self.new_streak_number_label.show()
+            self.new_number_opacity_effect.setOpacity(1.0)
+
             dummy_animation = QPropertyAnimation(self, b"pos")
             dummy_animation.setDuration(1)
-            dummy_animation.setStartValue(QPoint(0,0))
-            dummy_animation.setEndValue(QPoint(0,0))
+            dummy_animation.setStartValue(QPoint(0, 0))
+            dummy_animation.setEndValue(QPoint(0, 0))
             return dummy_animation
 
 
@@ -279,11 +301,11 @@ class StreakAnimationPopup(QDialog):
 
         self.master_sequence.finished.connect(self._show_great_button)
 
-        QTimer.singleShot(200, self.master_sequence.start)
+        QTimer.singleShot(300, self.master_sequence.start)
 
     def _show_great_button(self):
         self.button_opacity_animation = QPropertyAnimation(self.button_opacity_effect, b"opacity")
-        self.button_opacity_animation.setDuration(300)
+        self.button_opacity_animation.setDuration(400)
         self.button_opacity_animation.setStartValue(0.0)
         self.button_opacity_animation.setEndValue(1.0)
         self.button_opacity_animation.start()
