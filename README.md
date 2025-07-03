@@ -60,6 +60,7 @@ Contributions are welcome! If you have ideas for new features, bug fixes, or imp
 ## Support
 
 Any support is greatly appreciated and helps me continue development of AnkiStreak!
+
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/fusionguardian)
 
 ## License
