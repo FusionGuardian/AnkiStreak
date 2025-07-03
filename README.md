@@ -57,6 +57,11 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 
 Contributions are welcome! If you have ideas for new features, bug fixes, or improvements, please feel free to open an issue or submit a pull request.
 
+## Support
+
+Any support is greatly appreciated and helps me continue development of AnkiStreak!
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/fusionguardian)
+
 ## License
 
 This project is licensed under the [MIT LICENSE.](LICENSE)
