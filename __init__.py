@@ -44,7 +44,7 @@ def show_streak_animation(*args, **kwargs):
         should_show = False
         if DEBUG_FORCE_ANIMATION_POPUP:
             should_show = True
-        elif reviews_today == 0 and current_streak > 0:
+        elif reviews_today == 1 and current_streak >= 1:
             should_show = True
 
         if should_show:
