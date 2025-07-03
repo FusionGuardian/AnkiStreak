@@ -10,7 +10,7 @@ class FreezePopup(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent or mw)
         self.setWindowTitle("Streak Freezes")
-        self.setFixedSize(500, 150)
+        self.setFixedSize(500, 120)
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -36,18 +36,20 @@ class FreezePopup(QDialog):
         freeze_display_layout.addWidget(freeze_text_label)
 
         layout.addLayout(freeze_display_layout)
-        layout.addSpacing(20)
+        layout.addSpacing(10)
 
-        reviews = streak_manager.get_reviews_since_last_freeze()
-        progress = min(reviews, 1000)
-        bar = QProgressBar()
-        bar.setMinimum(0)
-        bar.setMaximum(1000)
-        bar.setValue(progress)
-        bar.setTextVisible(True)
-        bar.setFormat(f"{reviews}/1000 reviews until next freeze")
-        bar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(bar)
+        if current < max_freezes:
+            reviews = streak_manager.get_reviews_since_last_freeze()
+            progress = min(reviews, 1000)
+
+            bar = QProgressBar()
+            bar.setMinimum(0)
+            bar.setMaximum(1000)
+            bar.setValue(progress)
+            bar.setTextVisible(True)
+            bar.setFormat(f"{reviews}/1000 reviews until next freeze")
+            bar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(bar)
 
         self.setLayout(layout)
 
@@ -58,5 +60,7 @@ class FreezePopup(QDialog):
         return scaled_pixmap
 
 def open_freeze_popup(mw=None):
-    popup = FreezePopup()
+    if mw is None:
+        mw = AnkiQt.mw
+    popup = FreezePopup(mw)
     popup.exec()
