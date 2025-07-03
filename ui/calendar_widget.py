@@ -32,19 +32,10 @@ class CalendarWidget(QWidget):
         calendar_title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         calendar_title.setAlignment(QtCoreQt.AlignmentFlag.AlignLeft)
 
-        self.freezes_label = QLabel()
-        self.freezes_label.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        self.freezes_label.setAlignment(QtCoreQt.AlignmentFlag.AlignRight)
 
         header_layout.addWidget(calendar_title, 0, QtCoreQt.AlignmentFlag.AlignLeft)
-        header_layout.addStretch(1)
-        header_layout.addWidget(self.freezes_label, 0, QtCoreQt.AlignmentFlag.AlignRight)
-
         bottom_layout.addWidget(header_widget)
-
-        num_freezes = self.streak_manager.get_streak_freezes_available()
-        self.freezes_label.setText(f"Freezes: {num_freezes}")
-
+        
         calendar_container = QWidget()
         calendar_container.setObjectName("calendarContainer")
         calendar_container.setFixedHeight(480)
