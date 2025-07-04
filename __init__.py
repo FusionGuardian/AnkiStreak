@@ -11,6 +11,9 @@ DEBUG_FORCE_ANIMATION_POPUP = False
 setup_toolbar()
 
 def calculate_animation_bounds(current_streak):
+    streak_manager = get_streak_manager()
+    streak_manager.recalculate_streak()
+    
     prev = max(current_streak - 1, 0)
     curr = max(current_streak, 1)
     return prev, curr
