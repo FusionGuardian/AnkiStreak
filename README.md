@@ -10,13 +10,26 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 
 ## Features
 
-- **Daily Streak Counter:** An icon in the toolbar shows your current streak. The icon is greyed out until you complete your first review of the day, turning orange when the streak is active.
-- **Interactive Streak Calendar:** Click the toolbar icon to open a detailed calendar view of your entire streak history.
-- **Streak Freezes:** A saving grace for when you forget to review.
-    - You start with a set number of freezes that are automatically used on a day you forget to review.
-    - Earn a new freeze for every 1,000 cards you review.
-- **Animations:** Get a rewarding animation pop-up after your first review of the day.
-- **Share Your Progress:** Copy, download, or share your streak with others. 
+**Daily Streak Counter** 
+  - Shows your current streak
+  - Click it to open the Streak Calendar
+    
+
+**Streak Calendar** 
+  - A detailed calendar view of your entire streak history
+
+
+**Streak Freezes** 
+  - Automatically used on a day you forget to review
+  -  Earn a new freeze for every 1,000 cards you review
+
+
+**Animations** 
+  - Get a rewarding animation pop-up after your first review of the day.
+
+
+**Share Your Progress** 
+  - Copy, download, or share your streak with others.
 
 ## Installation
 
@@ -28,19 +41,7 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 6.  Click **Get Add-ons...** and paste the code from AnkiWeb (`392667675`).
 7.  Restart Anki.
 
-## How to Use
-- **Toolbar:**
-    - **Streak Icon:** Shows your current streak count. Click it to open the main **Streak Calendar** window.
-    - **Freeze Icon:** Shows your number of available streak freezes. Click it to see your progress toward earning the next freeze.
-
-- **Streak Calendar:**
-    - Navigate between months to see your history.
-    - Click any day to see a pop-up with detailed stats for that day.
-    - Click the **Share** icon in the top-right corner to open the share dialog.
-
-
-
-### How It Works
+## How It Works
 
 *   The first time you run the add-on, it scans your entire Anki review history (`revlog`) to build a complete record of all past days you've studied. This history is stored in a local `streak_history.json` file within the add-on's folder and updated on Anki restarts and syncs.
 
