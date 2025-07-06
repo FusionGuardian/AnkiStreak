@@ -202,20 +202,14 @@ class NumberAnimationWidget(QWidget):
 
 
 class StreakAnimationPopup(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, previous_streak=0, current_streak=0):
         super().__init__(parent, QtCoreQt.WindowType.SplashScreen | QtCoreQt.WindowType.FramelessWindowHint)
         self.setAttribute(QtCoreQt.WidgetAttribute.WA_DeleteOnClose)
         self.setWindowModality(QtCoreQt.WindowModality.NonModal)
         self.setFixedSize(250, 250)
 
-        self.streak_manager = get_streak_manager()
-        self.current_streak = self.streak_manager.get_current_streak_length()
-        if self.current_streak > 0 and self.current_streak != 1:
-            self.previous_streak = self.current_streak - 1
-        elif self.current_streak == 1:
-            self.previous_streak = 0
-        else:
-            self.previous_streak = 0
+        self.previous_streak = previous_streak
+        self.current_streak = current_streak
 
         self.setStyleSheet("background-color: #2e2e2e; border-radius: 15px;")
 
