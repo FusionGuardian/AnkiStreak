@@ -35,7 +35,7 @@ class CalendarWidget(QWidget):
 
         header_layout.addWidget(calendar_title, 0, QtCoreQt.AlignmentFlag.AlignLeft)
         bottom_layout.addWidget(header_widget)
-        
+
         calendar_container = QWidget()
         calendar_container.setObjectName("calendarContainer")
         calendar_container.setFixedHeight(480)
@@ -152,7 +152,7 @@ class CalendarWidget(QWidget):
                         obj.setStyleSheet(current_style.replace(current_bg_color_str, lighter_color.name()))
                     else:
                         # Fallback if no background-color found (e.g., transparent)
-                        obj.setStyleSheet("background-color: #555555; color: white; padding: 6px; border-radius: 10px; font-size: 20px;")
+                        obj.setStyleSheet("background-color: #555555; color: white; padding: 6px; border-radius: 10px; font-size: 20px; font-weight: bold;")
 
                     self.setCursor(QCursor(QtCoreQt.CursorShape.PointingHandCursor))
                 return True
