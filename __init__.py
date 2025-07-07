@@ -6,13 +6,13 @@ from .hooks.toolbar import setup_toolbar
 from .ui.streak_popup import open_streak_popup_with_manager
 from .ui.review_popup import StreakAnimationPopup
 
-DEBUG_FORCE_ANIMATION_POPUP = True
+DEBUG_FORCE_ANIMATION_POPUP = False
 
 setup_toolbar()
 
 def calculate_animation_bounds(current_streak):
-    prev = max(current_streak - 1, 0)
-    curr = max(current_streak, 1)
+    prev = max(current_streak, 0)
+    curr = max(current_streak  + 1, 1)
     return prev, curr
 
 def _on_profile_open():
@@ -37,7 +37,6 @@ def show_streak_animation(*args, **kwargs):
     try:
         streak_manager = get_streak_manager()
         today = date.today()
-        streak_manager.recalculate_streak()
         reviews_today = streak_manager.get_review_count_for_date(today)
         current_streak = streak_manager.get_current_streak_length()
 
@@ -51,8 +50,11 @@ def show_streak_animation(*args, **kwargs):
             prev, curr = calculate_animation_bounds(current_streak)
             popup = StreakAnimationPopup(mw, prev, curr)
             popup.show()
+            streak_manager.recalculate_streak()
+
     except Exception as e:
         print(f"AnkiStreak: Error showing streak animation: {e}")
+
 
 gui_hooks.reviewer_did_answer_card.append(show_streak_animation)
 
