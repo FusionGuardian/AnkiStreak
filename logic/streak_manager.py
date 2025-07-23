@@ -184,6 +184,10 @@ class StreakManager:
             if newly_earned_count > 0:
                 self.add_streak_freeze(newly_earned_count)        
 
+        if len(self.data["earned_freeze_dates"]) > self.MAX_STREAK_FREEZES:
+            self.data["earned_freeze_dates"].sort()
+            self.data["earned_freeze_dates"] = self.data["earned_freeze_dates"][-self.MAX_STREAK_FREEZES:]
+
         self.data["current_streak_length"] = calculated_streak
         # final_last_active_day_obj represents the most recent day in the streak
         self.data["last_active_day"] = final_last_active_day_obj.strftime(
