@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from aqt import mw, gui_hooks
 from typing import Set
+from anki.consts import DAY_SECS
 
 
 class StreakHistoryManager:
@@ -49,8 +50,10 @@ class StreakHistoryManager:
         result = mw.col.db.all("SELECT id FROM revlog")
         current_days_count = len(self.days)
 
-        for revlog_id, in result:
-            date_obj = datetime.fromtimestamp(revlog_id / 1000)
+        for revlog_id, in result:           
+            ts = revlog_id / 1000            
+            cutoff = mw.col.sched.dayCutoff
+            date_obj = datetime.fromtimestamp(ts + cutoff)
             date_str = date_obj.strftime("%Y-%m-%d")
             if date_str not in self.days:
                 self.days.add(date_str)
