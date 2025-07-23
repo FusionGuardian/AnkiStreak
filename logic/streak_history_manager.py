@@ -3,8 +3,6 @@ import json
 from datetime import datetime
 from aqt import mw, gui_hooks
 from typing import Set
-#from anki.consts import DAY_SECS
-
 
 class StreakHistoryManager:
     FILENAME = "streak_history.json"
@@ -54,29 +52,9 @@ class StreakHistoryManager:
             ts = revlog_id / 1000            
             cutoff_timestamp = mw.col.sched.day_cutoff 
             cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
-            offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
-            
-            #anki_day = int((ts - offset_seconds) // 86400)
-            #date_str = datetime.fromtimestamp(anki_day * 86400).date().isoformat()
-            
-            #date_obj = datetime.fromtimestamp(ts - offset_seconds)
-            date_obj1 = datetime.fromtimestamp(ts)
-            date_obj2 = datetime.fromtimestamp(ts - offset_seconds)
-            #date_obj2 = mw.col.sched.date_for_timestamp(ts).isoformat()
-            #date_obj3 = mw.col.sched.date_for_timestamp(revlog_id).isoformat()
-            date_str = date_obj2.strftime("%Y-%m-%d")
-            #date_str = mw.col.sched.date_for_timestamp(ts).isoformat()
-            
-            # DEBUG:
-            #print(f"[StreakHist] revlog_id={revlog_id} ts={ts:.0f} cutoff={cutoff} "
-            #f"-> date_obj={date_obj.isoformat()} date_str={date_str}")
-            
-            #[StreakHist] revlog_id=1749445948000 ts=1749445948 cutoff=1753254000 date_obj=2025-06-08T22:12:28 date_obj1=2025-06-09T02:12:28 date_obj2=2025-06-08T22:12:28 -> date_str=2025-06-09
-            
-            if revlog_id > 1740366000000 and revlog_id < 1740452400000:
-                # DEBUG:
-                print(f"[StreakHist] revlog_id={revlog_id} ts={ts:.0f} cutoff={cutoff_timestamp} date_obj1={date_obj1.isoformat()} date_obj2={date_obj2.isoformat()}  "
-                    f"-> date_str={date_str}")
+            offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second          
+            date_obj = datetime.fromtimestamp(ts - offset_seconds)
+            date_str = date_obj.strftime("%Y-%m-%d")
           
             if date_str not in self.days:
                 self.days.add(date_str)

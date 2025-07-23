@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, date
 from aqt import mw, gui_hooks, AnkiQt
 from .streak_history_manager import StreakHistoryManager
 from typing import Union, Any, List
+import time
 
 MAX_STREAK_FREEZES = 2
 REVIEWS_PER_FREEZE = 1000
@@ -65,10 +66,8 @@ class StreakManager:
 
     def add_streak_freeze(self, count: int = 1):
         if self.data is None:
-            return
-
-        #today_str = datetime.today().date().strftime("%Y-%m-%d")
-        import time
+            return        
+        
         ts_now = time.time()
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
@@ -117,21 +116,15 @@ class StreakManager:
 
         actual_reviewed_dates = self.streak_history.get_streak_days()
         current_consumed_freezes = set(self.data["consumed_freeze_dates"])
-
-        import time
+      
         ts_now = time.time()
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
         offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
         today = datetime.fromtimestamp(ts_now - offset_seconds)
-                
-        #today = datetime.today().date()
+                        
         yesterday = today - timedelta(days=1)
         
-        # DEBUG:
-        print(f"[recalculate_streak] yesterday={yesterday.isoformat()} timedelta={timedelta(days=1)}")
-
-
         today_is_active = self._is_day_active(today, actual_reviewed_dates, current_consumed_freezes)
 
         calculated_streak = 0
@@ -245,8 +238,7 @@ class StreakManager:
         return self.data.get("reviews_since_last_freeze", 0)
 
     def has_reviewed_today(self) -> bool:
-        #today_str = datetime.today().date().strftime("%Y-%m-%d")
-        import time
+        
         ts_now = time.time()
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
@@ -257,7 +249,6 @@ class StreakManager:
 
     def get_review_count_for_date(self, check_date: date) -> int:
         
-        #cutoff_ms = mw.col.sched.day_cutoff * 1000
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
         offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
@@ -268,13 +259,6 @@ class StreakManager:
         start_ts = int(start_dt.timestamp() + offset_seconds)
         end_ts = int(end_dt.timestamp() + offset_seconds)
         
-        start_ts_datetime = datetime.fromtimestamp(start_ts)
-        end_ts_datetime = datetime.fromtimestamp(end_ts)
-        
-        # DEBUG:
-        print(f"[get_review_count_for_date] offset_seconds={offset_seconds} start_dt={start_dt.isoformat()} end_dt={end_dt.isoformat()} start_ts={start_ts} end_ts={end_ts} start_ts_datetime={start_ts_datetime.isoformat()} end_ts_datetime={end_ts_datetime.isoformat()}")
-            #  f"-> date_str={date_str}")
-
         query = "select count(*) from revlog where id  >= ? and id  < ?"
         count = self.mw.col.db.scalar(query,  start_ts * 1000,  end_ts * 1000)
 
@@ -283,8 +267,7 @@ class StreakManager:
     def get_review_details_for_date(self, check_date: date) -> dict:
         if not self.mw or not self.mw.col:
             return {}
-
-        #cutoff_ms = mw.col.sched.day_cutoff * 1000
+        
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
         offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
@@ -294,11 +277,7 @@ class StreakManager:
 
         start_ts = int(start_dt.timestamp() + offset_seconds)
         end_ts = int(end_dt.timestamp() + offset_seconds)
-        
-        start_ts_datetime = datetime.fromtimestamp(start_ts)
-        end_ts_datetime = datetime.fromtimestamp(end_ts)
-        
-        
+               
         query = """
                 SELECT d.name, \
                        COUNT(r.id), \
@@ -314,11 +293,7 @@ class StreakManager:
                 ORDER BY d.name \
                 """
         results = self.mw.col.db.all(query, start_ts * 1000, end_ts * 1000)
-
-        # DEBUG:
-        print(f"[get_review_details_for_date] offset_seconds={offset_seconds} start_dt={start_dt.isoformat()} end_dt={end_dt.isoformat()} start_ts={start_ts} end_ts={end_ts} start_ts_datetime={start_ts_datetime.isoformat()} end_ts_datetime={end_ts_datetime.isoformat()}")
-            #  f"-> date_str={date_str}")
-            
+           
         details = {}
         for deck_name, review_count, time_spent_ms in results:
             details[deck_name] = {
@@ -331,21 +306,14 @@ class StreakManager:
         if self.data is None:
             self.data = self._load_data()
 
-        #today = datetime.today().date()
-        #today_str = today.strftime("%Y-%m-%d")
-        
-        import time
         ts_now = time.time()
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
         offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
+        
         today = datetime.fromtimestamp(ts_now - offset_seconds)
         today_str = today.strftime("%Y-%m-%d")
-        
-        # DEBUG:
-        print(f"[update_reviews_on_sync] offset_seconds={offset_seconds} today={today.isoformat()} today_str={today_str}")
-                    
-        
+                
         current_reviews_today = self.get_review_count_for_date(today)
 
         last_sync_date_str = self.data.get("last_sync_date")
@@ -373,32 +341,14 @@ class StreakManager:
         if self.data is None:
             self.data = self._load_data()
 
-        #today_str = datetime.today().date().strftime("%Y-%m-%d")
-        
-        
-        #ts = revlog_id / 1000            
-        #cutoff_timestamp = mw.col.sched.day_cutoff 
-        #cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
-        #offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
-        
-        #anki_day = int((ts - offset_seconds) // 86400)
-        #date_str = datetime.fromtimestamp(anki_day * 86400).date().isoformat()
-        
-        import time
         ts_now = time.time()
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
         offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
         
         today = datetime.fromtimestamp(ts_now - offset_seconds)
-        
-        #cutoff = mw.col.sched.day_cutoff
-        #date_obj = datetime.fromtimestamp(ts_now + cutoff)
         today_str = today.strftime("%Y-%m-%d")
-        
-        # DEBUG:
-        print(f"[update_streak_for_review] offset_seconds={offset_seconds} today={today.isoformat()} today_str={today_str}")
-        
+                
         self.streak_history.add_day(today_str)
 
         self.data["reviews_since_last_freeze"] = self.data.get("reviews_since_last_freeze", 0) + 1
@@ -409,9 +359,7 @@ class StreakManager:
 
         self.recalculate_streak()
 
-
 _global_streak_manager_instance = None
-
 
 def get_streak_manager() -> StreakManager:
     global _global_streak_manager_instance
