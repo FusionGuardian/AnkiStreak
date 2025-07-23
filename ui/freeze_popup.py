@@ -18,6 +18,7 @@ class FreezePopup(QDialog):
         streak_manager = get_streak_manager()
         current = streak_manager.get_streak_freezes_available()
         max_freezes = streak_manager.MAX_STREAK_FREEZES
+        days_per_freeze = streak_manager.DAYS_PER_FREEZE
 
         freeze_display_layout = QHBoxLayout()
         freeze_display_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -39,15 +40,15 @@ class FreezePopup(QDialog):
         layout.addSpacing(10)
 
         if current < max_freezes:
-            reviews = streak_manager.get_reviews_since_last_freeze()
-            progress = min(reviews, 1000)
+            days = streak_manager.get_days_since_last_freeze()
+            progress = min(days, days_per_freeze)
 
             bar = QProgressBar()
             bar.setMinimum(0)
-            bar.setMaximum(1000)
+            bar.setMaximum(days_per_freeze)
             bar.setValue(progress)
             bar.setTextVisible(True)
-            bar.setFormat(f"{reviews}/1000 reviews until next freeze")
+            bar.setFormat(f"{days}/{days_per_freeze} days until next freeze")
             bar.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(bar)
 

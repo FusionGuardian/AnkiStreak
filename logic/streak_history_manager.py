@@ -4,7 +4,6 @@ from datetime import datetime
 from aqt import mw, gui_hooks
 from typing import Set
 
-
 class StreakHistoryManager:
     FILENAME = "streak_history.json"
 
@@ -49,9 +48,14 @@ class StreakHistoryManager:
         result = mw.col.db.all("SELECT id FROM revlog")
         current_days_count = len(self.days)
 
-        for revlog_id, in result:
-            date_obj = datetime.fromtimestamp(revlog_id / 1000)
+        for revlog_id, in result:           
+            ts = revlog_id / 1000            
+            cutoff_timestamp = mw.col.sched.day_cutoff 
+            cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
+            offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second          
+            date_obj = datetime.fromtimestamp(ts - offset_seconds)
             date_str = date_obj.strftime("%Y-%m-%d")
+          
             if date_str not in self.days:
                 self.days.add(date_str)
 
