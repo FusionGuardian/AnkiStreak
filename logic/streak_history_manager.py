@@ -1,8 +1,10 @@
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from aqt import mw, gui_hooks
 from typing import Set
+
+MINIMUM_TIME_SPENT = 5
 
 class StreakHistoryManager:
     FILENAME = "streak_history.json"
@@ -40,6 +42,23 @@ class StreakHistoryManager:
             self.days.add(date_str)
             self.save()
 
+    def get_time_spent_for_date(self, check_date: date) -> int:
+        
+        cutoff_timestamp = mw.col.sched.day_cutoff 
+        cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
+        offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
+        
+        start_dt = datetime(check_date.year, check_date.month, check_date.day)
+        end_dt = start_dt + timedelta(days=1)
+
+        start_ts = int(start_dt.timestamp() + offset_seconds)
+        end_ts = int(end_dt.timestamp() + offset_seconds)
+        
+        query = "select SUM(time) from revlog where id  >= ? and id  < ?"
+        time_spent_ms = mw.col.db.scalar(query,  start_ts * 1000,  end_ts * 1000)
+
+        return time_spent_ms
+
     def import_reviewed_days_from_log(self):
         if not mw.col:
             print("AnkiStreak: Collection not available for revlog import (unexpected).")
@@ -55,7 +74,13 @@ class StreakHistoryManager:
             offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second          
             date_obj = datetime.fromtimestamp(ts - offset_seconds)
             date_str = date_obj.strftime("%Y-%m-%d")
-          
+                
+            total_time_ms = self.get_time_spent_for_date(date_obj)
+            total_time_min = round(total_time_ms / 60000, 1)
+
+            if total_time_min < MINIMUM_TIME_SPENT:
+                continue
+
             if date_str not in self.days:
                 self.days.add(date_str)
 

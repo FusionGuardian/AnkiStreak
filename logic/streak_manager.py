@@ -78,9 +78,11 @@ class StreakManager:
         for _ in range(count):
             if len(self.data["earned_freeze_dates"]) < self.MAX_STREAK_FREEZES:
                 self.data["earned_freeze_dates"].append(today_str)
+                print(f"[StreakManager] Ganhou um freeze no dia {today_str}")
             else:
                 break
         self.data["earned_freeze_dates"].sort()
+        print(f"[StreakManager] Freezes disponíveis após ganhar: {self.data['earned_freeze_dates']}")
         self._save_data()
         self._update_toolbar()
 
@@ -97,6 +99,7 @@ class StreakManager:
                 found_index = i
                 break
 
+        print(f"[StreakManager] Tentando consumir freeze para {date_to_cover_str}. Freezes disponíveis: {self.data['earned_freeze_dates']}")
         if found_index != -1 and date_to_cover_str not in self.data["consumed_freeze_dates"]:
             self.data["earned_freeze_dates"].pop(found_index)  # Remove the used freeze
             self.data["consumed_freeze_dates"].append(date_to_cover_str)
@@ -104,6 +107,7 @@ class StreakManager:
             self._save_data()
             self._update_toolbar()
             return True
+        print(f"[StreakManager] Não conseguiu consumir freeze para {date_to_cover_str}")
         return False
 
     def _is_day_active(self, check_date: date, actual_reviewed_dates: set, current_consumed_freezes: set) -> bool:
@@ -113,6 +117,111 @@ class StreakManager:
     def recalculate_streak(self):
         if self.data is None:
             self.data = self._load_data()
+
+        print(f"[recalculate_streak2] Freezes disponíveis antes do cálculo: {self.data['earned_freeze_dates']}")
+        print(f"[recalculate_streak2] Freezes já consumidos: {self.data['consumed_freeze_dates']}")
+
+        actual_reviewed_dates = self.streak_history.get_streak_days()
+        # Limpa freezes ganhos e consumidos para reprocessar corretamente
+        self.data["earned_freeze_dates"] = []
+        self.data["consumed_freeze_dates"] = []
+        current_consumed_freezes = set()
+
+        ts_now = time.time()
+        cutoff_timestamp = mw.col.sched.day_cutoff 
+        cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
+        offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
+        today = datetime.fromtimestamp(ts_now - offset_seconds)
+
+        days_to_check = []
+        for i in range(365 * 10):
+            check_date = today - timedelta(days=365 * 10 - 1 - i)
+            days_to_check.append(check_date)
+
+        calculated_streak = 0
+        streak_counter = 0
+        last_active_day = None
+        self.data["earned_freeze_dates"] = []
+        self.data["consumed_freeze_dates"] = []
+        current_consumed_freezes = set()
+
+        consecutive_bad_days = 0  # Para controlar logs repetitivos
+
+        for check_date in days_to_check:
+            date_str = check_date.strftime("%Y-%m-%d")
+            is_reviewed = date_str in actual_reviewed_dates
+            is_frozen = date_str in current_consumed_freezes
+
+            if is_reviewed or is_frozen:
+                if consecutive_bad_days > 0:
+                    print(f"[StreakManager] Streak quebrado em {prev_bad_day}, reiniciando contadores após {consecutive_bad_days} dias ruins.")
+                    consecutive_bad_days = 0
+                print(f"[StreakManager] Dia {date_str}: reviewed={is_reviewed}, frozen={is_frozen}, streak={streak_counter}")
+                calculated_streak += 1
+                streak_counter += 1
+                last_active_day = check_date
+                # Ganha freeze a cada 5 dias de streak
+                if streak_counter % DAYS_PER_FREEZE == 0:
+                    self.data["earned_freeze_dates"].append(date_str)
+                    # Mantém só os dois mais recentes
+                    if len(self.data["earned_freeze_dates"]) > self.MAX_STREAK_FREEZES:
+                        self.data["earned_freeze_dates"] = self.data["earned_freeze_dates"][-self.MAX_STREAK_FREEZES:]
+                    print(f"[StreakManager] Ganhou freeze em {date_str}. Freezes atuais: {self.data['earned_freeze_dates']}")
+            else:
+                # Tenta consumir um freeze já ganho até esse dia
+                found_index = -1
+                for i, earned_date_str in enumerate(self.data["earned_freeze_dates"]):
+                    earned_date_obj = datetime.strptime(earned_date_str, "%Y-%m-%d").date()
+                    if earned_date_obj <= check_date.date():
+                        found_index = i
+                        break
+                if found_index != -1 and date_str not in self.data["consumed_freeze_dates"]:
+                    consumed_freeze_date = self.data["earned_freeze_dates"][found_index]
+                    self.data["consumed_freeze_dates"].append(date_str)
+                    current_consumed_freezes.add(date_str)
+                    self.data["earned_freeze_dates"].pop(found_index)
+                    calculated_streak += 1
+                    streak_counter += 1
+                    last_active_day = check_date
+                    print(f"[StreakManager] Consumiu freeze de {consumed_freeze_date} para cobrir {date_str}.")
+                    print(f"[StreakManager] Freezes restantes: {self.data['earned_freeze_dates']}")
+                    if consecutive_bad_days > 0:
+                        print(f"[StreakManager] Streak quebrado em {prev_bad_day}, reiniciando contadores após {consecutive_bad_days} dias ruins.")
+                        consecutive_bad_days = 0
+                else:
+                    # Streak quebrado, reinicia contadores, mas só loga se vier de sequência boa
+                    if streak_counter > 0:
+                        print(f"[StreakManager] Streak quebrado em {date_str}, reiniciando contadores.")
+                    consecutive_bad_days += 1
+                    prev_bad_day = date_str
+                    calculated_streak = 0
+                    streak_counter = 0
+                    last_active_day = None
+                    #self.data["earned_freeze_dates"] = []
+                    #self.data["consumed_freeze_dates"] = []
+                    current_consumed_freezes = set()
+
+        self.data["earned_freeze_dates"].sort()
+        self.data["consumed_freeze_dates"].sort()
+        self.data["current_streak_length"] = calculated_streak
+        self.data["last_active_day"] = last_active_day.strftime("%Y-%m-%d") if last_active_day else None
+        self.data["days_since_last_freeze"] = streak_counter % DAYS_PER_FREEZE
+
+        print(f"[recalculate_streak2] Freezes disponíveis após cálculo: {self.data['earned_freeze_dates']}")
+        print(f"[recalculate_streak2] Freezes consumidos após cálculo: {self.data['consumed_freeze_dates']}")
+        print(f"[recalculate_streak2] Dias frozen para widget: {self.data['consumed_freeze_dates']}")
+
+        self._save_data()
+        self._update_toolbar()
+
+
+
+    def recalculate_streak_old(self):
+        if self.data is None:
+            self.data = self._load_data()
+
+        print(f"[StreakManager] Freezes disponíveis antes do cálculo: {self.data['earned_freeze_dates']}")
+        print(f"[StreakManager] Freezes já consumidos: {self.data['consumed_freeze_dates']}")
 
         actual_reviewed_dates = self.streak_history.get_streak_days()
         current_consumed_freezes = set(self.data["consumed_freeze_dates"])
@@ -162,7 +271,15 @@ class StreakManager:
             if is_reviewed or is_frozen:
                 calculated_streak += 1
             else:
-                break
+                # Tenta consumir um freeze para o dia 'não perfeito'
+                if self.consume_streak_freeze(date_str):
+                    print(f"[StreakManager] Consumiu um freeze para o dia {date_str} (menos de 5 minutos de estudo).")
+                    current_consumed_freezes.add(date_str)
+                    calculated_streak += 1
+                else:
+                    # Se não conseguir, quebra o streak
+                    print(f"[StreakManager] Não foi possível consumir freeze para o dia {date_str}. Streak quebrado.")
+                    break
 
             check_date -= timedelta(days=1)
             if calculated_streak > 365 * 10:
@@ -187,6 +304,9 @@ class StreakManager:
         if len(self.data["earned_freeze_dates"]) > self.MAX_STREAK_FREEZES:
             self.data["earned_freeze_dates"].sort()
             self.data["earned_freeze_dates"] = self.data["earned_freeze_dates"][-self.MAX_STREAK_FREEZES:]
+
+        print(f"[StreakManager] Freezes disponíveis após cálculo: {self.data['earned_freeze_dates']}")
+        print(f"[StreakManager] Freezes consumidos após cálculo: {self.data['consumed_freeze_dates']}")
 
         self.data["current_streak_length"] = calculated_streak
         # final_last_active_day_obj represents the most recent day in the streak
