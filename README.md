@@ -21,7 +21,7 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 
 **Streak Freezes** 
   - Automatically used on a day you forget to review
-  -  Earn a new freeze for every 1,000 cards you review
+  -  Earn a new freeze for every 5 days reviewed
 
 
 **Animations** 
