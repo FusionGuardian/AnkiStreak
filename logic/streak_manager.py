@@ -125,7 +125,10 @@ class StreakManager:
         date_str = check_date.strftime("%Y-%m-%d")
         return date_str in actual_reviewed_dates or date_str in current_consumed_freezes
 
-    def recalculate_streak_with_spinner(self):
+    def recalculate_streak_with_spinner(self, callback=None):
+        if not self.mw or not self.mw.col:
+            print("AnkiStreak: Main window or collection is closed, skipping progress bar.")
+            return {}
         #progress = QProgressDialog("Calculando streak...", None, 0, 0, self.mw)
         #print(f"Calculando streak...")
         #progress.setWindowTitle("AnkiStreak")
@@ -147,9 +150,9 @@ class StreakManager:
         #TaskThread.run_with_progress(self.mw, "Processando...", self._calculate_streak_only, self._update_toolbar)
         #TaskThread.run_with_progress(self.mw, "Testando...", self.fake_func, self.finished)
         ProgressRunner(self.mw).run_with_progress(            
-            "Processando...",
+            "Processando streaks...",
             self._calculate_streak_only,
-            self._update_toolbar
+            callback or self._update_toolbar
         )
 
     def _cleanup_streak_thread(self):
@@ -193,7 +196,7 @@ class StreakManager:
 
     def get_current_streak_length(self) -> int:
         if self.data is None:
-            self.recalculate_streak_with_spinner()
+            self.data = self._load_data()
         return self.data["current_streak_length"] if self.data else 0
 
     def get_streak_freezes_available(self) -> int:
@@ -222,14 +225,17 @@ class StreakManager:
         return self.data.get("days_since_last_freeze", 0)
 
     def has_reviewed_today(self) -> bool:
-        
-        ts_now = time.time()
-        cutoff_timestamp = mw.col.sched.day_cutoff 
-        cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
-        offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
-        today = datetime.fromtimestamp(ts_now - offset_seconds)
-        today_str = today.strftime("%Y-%m-%d")
-        return today_str in self.streak_history.get_streak_days()
+        try:
+            ts_now = time.time()
+            cutoff_timestamp = mw.col.sched.day_cutoff 
+            cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
+            offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
+            today = datetime.fromtimestamp(ts_now - offset_seconds)
+            today_str = today.strftime("%Y-%m-%d")
+            return today_str in self.streak_history.get_streak_days()
+        except Exception as e:
+            print(f"AnkiStreak: Error in has_reviewed_today: {e}")
+            return False
 
     def get_review_count_for_date(self, check_date: date) -> int:
         
@@ -286,141 +292,139 @@ class StreakManager:
             }
         return details
 
-    def cleanup_on_close(self):
-        if hasattr(self, "_streak_thread") and self._streak_thread is not None:
-            self._streak_thread.quit()
-            self._streak_thread.wait()
-            self._streak_thread = None
-
     def _calculate_streak_only(self):
-        if self.data is None:
-            self.data = self._load_data()
+        try:
+            if self.data is None:
+                self.data = self._load_data()
 
-        #---------------------------------------------------------
-        # não vou mais fazer aqui, porque deixei essa lógica em outro método
-        # para calcular varios dias que mudou streak, chamar no pai 
-        # o streak atual, depois sincroniza, depois chama o atual pra ver a diferença
-        # e se for o caso, aí dispara o popup
-        # esse método aqui, só faz o cálculo dos streaks e freezes
-        # ele também não pega do banco. 
-        # ao abrir o profile, vou precisar pegar do banco, e ao sincronizar também
-        # então esse cara aqui, vai ser disparado sempre após carregar do banco
-        # para recalcular o streak e os freezes
-        #---------------------------------------------------------
+            #---------------------------------------------------------
+            # não vou mais fazer aqui, porque deixei essa lógica em outro método
+            # para calcular varios dias que mudou streak, chamar no pai 
+            # o streak atual, depois sincroniza, depois chama o atual pra ver a diferença
+            # e se for o caso, aí dispara o popup
+            # esse método aqui, só faz o cálculo dos streaks e freezes
+            # ele também não pega do banco. 
+            # ao abrir o profile, vou precisar pegar do banco, e ao sincronizar também
+            # então esse cara aqui, vai ser disparado sempre após carregar do banco
+            # para recalcular o streak e os freezes
+            #---------------------------------------------------------
 
-        ## Dias ativos antes da importação
-        #actual_reviewed_dates_before = self.streak_history.get_streak_days()
-        #prev_streak = len(actual_reviewed_dates_before)
+            ## Dias ativos antes da importação
+            #actual_reviewed_dates_before = self.streak_history.get_streak_days()
+            #prev_streak = len(actual_reviewed_dates_before)
 
-        ## Atualiza o histórico a partir do banco (sincroniza com outros dispositivos)
-        #self.streak_history.import_reviewed_days_from_log()
-        #self.streak_history.save()
-        
-        ## Dias ativos depois da importação
-        #actual_reviewed_dates_after = self.streak_history.get_streak_days()
-        #after_streak = len(actual_reviewed_dates_after)
+            ## Atualiza o histórico a partir do banco (sincroniza com outros dispositivos)
+            self.streak_history.import_reviewed_days_from_log()
+            self.streak_history.save()
+            
+            ## Dias ativos depois da importação
+            #actual_reviewed_dates_after = self.streak_history.get_streak_days()
+            #after_streak = len(actual_reviewed_dates_after)
 
-        #print(f"_calculate_streak_only disparado")
-        #from datetime import datetime
-        #from .streak_history_manager import MINIMUM_TIME_SPENT
-        #actual_reviewed_dates = self.streak_history.get_streak_days()
-        #print("[AnkiStreak] Dias ativos retornados pelo StreakHistoryManager antes:", actual_reviewed_dates)
+            #print(f"_calculate_streak_only disparado")
+            #from datetime import datetime
+            #from .streak_history_manager import MINIMUM_TIME_SPENT
+            #actual_reviewed_dates = self.streak_history.get_streak_days()
+            #print("[AnkiStreak] Dias ativos retornados pelo StreakHistoryManager antes:", actual_reviewed_dates)
 
-        #print(f"total_time_ms:{total_time_ms}")
-        #minimumTimeSpent = MINIMUM_TIME_SPENT * 60_000
-        #print(f"minimumTimeSpent:{minimumTimeSpent}")
-        #if total_time_ms and total_time_ms >= MINIMUM_TIME_SPENT * 60_000:
-        #    print(f"ok, estudei o minimo")
-        #    if today_str not in actual_reviewed_dates:
-        #        print(f"ok, o dia de hoje não estava na lista")
-        #        self.streak_history.days.add(today_str)
-        #        self.streak_history.save()
-        #        print(f"ok, vou disparar o popup após adicionar e salva o dia de hoje no streak")
-        #        # Dispara o sinal da thread, se existir
-        #        if hasattr(self, "_streak_thread") and self._streak_thread is not None:
-        #            print(f"ok, _streak_thread existe")
-        #            if hasattr(self._streak_thread, "streak_gained_today"):
-        #                print(f"ok, streak_gained_today existe... disparando o sinal")
-        #                self._streak_thread.streak_gained_today.emit()
+            #print(f"total_time_ms:{total_time_ms}")
+            #minimumTimeSpent = MINIMUM_TIME_SPENT * 60_000
+            #print(f"minimumTimeSpent:{minimumTimeSpent}")
+            #if total_time_ms and total_time_ms >= MINIMUM_TIME_SPENT * 60_000:
+            #    print(f"ok, estudei o minimo")
+            #    if today_str not in actual_reviewed_dates:
+            #        print(f"ok, o dia de hoje não estava na lista")
+            #        self.streak_history.days.add(today_str)
+            #        self.streak_history.save()
+            #        print(f"ok, vou disparar o popup após adicionar e salva o dia de hoje no streak")
+            #        # Dispara o sinal da thread, se existir
+            #        if hasattr(self, "_streak_thread") and self._streak_thread is not None:
+            #            print(f"ok, _streak_thread existe")
+            #            if hasattr(self._streak_thread, "streak_gained_today"):
+            #                print(f"ok, streak_gained_today existe... disparando o sinal")
+            #                self._streak_thread.streak_gained_today.emit()
 
-        # aqui o sistema roda e recalcula todo o streak e os freezes, dos ultimos 10 anos
-        # baseado nos dias ativos que estão no StreakHistoryManager
-        ts_now = time.time()
-        cutoff_timestamp = mw.col.sched.day_cutoff 
-        cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
-        offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
-        today = datetime.fromtimestamp(ts_now - offset_seconds)
-        #total_time_ms = self.streak_history.get_time_spent_for_date(today)
-        today_str = today.strftime("%Y-%m-%d")
+            # aqui o sistema roda e recalcula todo o streak e os freezes, dos ultimos 10 anos
+            # baseado nos dias ativos que estão no StreakHistoryManager
+            ts_now = time.time()
+            cutoff_timestamp = mw.col.sched.day_cutoff 
+            cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
+            offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
+            today = datetime.fromtimestamp(ts_now - offset_seconds)
+            #total_time_ms = self.streak_history.get_time_spent_for_date(today)
+            today_str = today.strftime("%Y-%m-%d")
 
-        actual_reviewed_dates = self.streak_history.get_streak_days()
-        print("[AnkiStreak] Dias ativos retornados pelo StreakHistoryManager depois:", actual_reviewed_dates)
-        self.data["earned_freeze_dates"] = []
-        self.data["consumed_freeze_dates"] = []
-        current_consumed_freezes = set()
+            actual_reviewed_dates = self.streak_history.get_streak_days()
+            #print("[AnkiStreak] Dias ativos retornados pelo StreakHistoryManager depois:", actual_reviewed_dates)
+            self.data["earned_freeze_dates"] = []
+            self.data["consumed_freeze_dates"] = []
+            current_consumed_freezes = set()
 
-        days_to_check = []
-        for i in range(365 * 10):
-            check_date = today - timedelta(days=365 * 10 - 1 - i)
-            days_to_check.append(check_date)
+            days_to_check = []
+            for i in range(365 * 10):
+                check_date = today - timedelta(days=365 * 10 - 1 - i)
+                days_to_check.append(check_date)
 
-        calculated_streak = 0
-        streak_counter = 0
-        last_active_day = None
-        self.data["earned_freeze_dates"] = []
-        self.data["consumed_freeze_dates"] = []
-        current_consumed_freezes = set()
+            calculated_streak = 0
+            streak_counter = 0
+            last_active_day = None
+            self.data["earned_freeze_dates"] = []
+            self.data["consumed_freeze_dates"] = []
+            current_consumed_freezes = set()
 
-        consecutive_bad_days = 0  # Para controlar logs repetitivos
+            consecutive_bad_days = 0  # Para controlar logs repetitivos
 
-        for check_date in days_to_check:
-            date_str = check_date.strftime("%Y-%m-%d")
-            is_reviewed = date_str in actual_reviewed_dates
-            is_frozen = date_str in current_consumed_freezes
+            for check_date in days_to_check:
+                date_str = check_date.strftime("%Y-%m-%d")
+                is_reviewed = date_str in actual_reviewed_dates
+                is_frozen = date_str in current_consumed_freezes
 
-            if is_reviewed or is_frozen:
-                if consecutive_bad_days > 0:                    
-                    consecutive_bad_days = 0                
-                calculated_streak += 1
-                streak_counter += 1
-                last_active_day = check_date
-                if streak_counter % DAYS_PER_FREEZE == 0:
-                    self.data["earned_freeze_dates"].append(date_str)
-                    if len(self.data["earned_freeze_dates"]) > self.MAX_STREAK_FREEZES:
-                        self.data["earned_freeze_dates"] = self.data["earned_freeze_dates"][-self.MAX_STREAK_FREEZES:]                    
-            else:
-                found_index = -1
-                for i, earned_date_str in enumerate(self.data["earned_freeze_dates"]):
-                    earned_date_obj = datetime.strptime(earned_date_str, "%Y-%m-%d").date()
-                    if earned_date_obj <= check_date.date():
-                        found_index = i
-                        break
-                if found_index != -1 and date_str not in self.data["consumed_freeze_dates"]:
-                    consumed_freeze_date = self.data["earned_freeze_dates"][found_index]
-                    self.data["consumed_freeze_dates"].append(date_str)
-                    current_consumed_freezes.add(date_str)
-                    self.data["earned_freeze_dates"].pop(found_index)
+                if is_reviewed or is_frozen:
+                    if consecutive_bad_days > 0:                    
+                        consecutive_bad_days = 0                
                     calculated_streak += 1
                     streak_counter += 1
                     last_active_day = check_date
-                    if consecutive_bad_days > 0:
-                        consecutive_bad_days = 0
+                    if streak_counter % DAYS_PER_FREEZE == 0:
+                        self.data["earned_freeze_dates"].append(date_str)
+                        if len(self.data["earned_freeze_dates"]) > self.MAX_STREAK_FREEZES:
+                            self.data["earned_freeze_dates"] = self.data["earned_freeze_dates"][-self.MAX_STREAK_FREEZES:]                    
                 else:
-                    if streak_counter > 0:
-                        consecutive_bad_days += 1
-                        prev_bad_day = date_str
-                        calculated_streak = 0
-                        streak_counter = 0
-                        last_active_day = None
-                        current_consumed_freezes = set()
+                    found_index = -1
+                    for i, earned_date_str in enumerate(self.data["earned_freeze_dates"]):
+                        earned_date_obj = datetime.strptime(earned_date_str, "%Y-%m-%d").date()
+                        if earned_date_obj <= check_date.date():
+                            found_index = i
+                            break
+                    if found_index != -1 and date_str not in self.data["consumed_freeze_dates"]:
+                        consumed_freeze_date = self.data["earned_freeze_dates"][found_index]
+                        self.data["consumed_freeze_dates"].append(date_str)
+                        current_consumed_freezes.add(date_str)
+                        self.data["earned_freeze_dates"].pop(found_index)
+                        calculated_streak += 1
+                        streak_counter += 1
+                        last_active_day = check_date
+                        if consecutive_bad_days > 0:
+                            consecutive_bad_days = 0
+                    else:
+                        if streak_counter > 0:
+                            consecutive_bad_days += 1
+                            prev_bad_day = date_str
+                            calculated_streak = 0
+                            streak_counter = 0
+                            last_active_day = None
+                            current_consumed_freezes = set()
 
-        self.data["earned_freeze_dates"].sort()
-        self.data["consumed_freeze_dates"].sort()
-        self.data["current_streak_length"] = calculated_streak
-        self.data["last_active_day"] = last_active_day.strftime("%Y-%m-%d") if last_active_day else None
-        self.data["days_since_last_freeze"] = streak_counter % DAYS_PER_FREEZE
+            self.data["earned_freeze_dates"].sort()
+            self.data["consumed_freeze_dates"].sort()
+            self.data["current_streak_length"] = calculated_streak
+            self.data["last_active_day"] = last_active_day.strftime("%Y-%m-%d") if last_active_day else None
+            self.data["days_since_last_freeze"] = streak_counter % DAYS_PER_FREEZE
 
-        self._save_data()
+            self._save_data()
+        except Exception as e:
+            print(f"AnkiStreak: Error in _calculate_streak_only: {e}")
+            return 0
 
     def _show_streak_popup(self):
         from ..ui.review_popup import StreakAnimationPopup  # Import correto!
@@ -447,7 +451,7 @@ class StreakManager:
 
         #importando o tempo mínimo de estudo da classe StreakHistoryManager
         print(f"check_review_streak_change disparado")
-        from datetime import datetime
+        #from datetime import datetime
         from .streak_history_manager import MINIMUM_TIME_SPENT
         
         #pega os dias ativos que vai ser usado para ver se ganhou um streak ou não

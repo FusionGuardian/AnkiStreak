@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, date
 from aqt import mw, gui_hooks
 from typing import Set
 
-MINIMUM_TIME_SPENT = 8
+
+MINIMUM_TIME_SPENT = 14 # minutos
 
 class StreakHistoryManager:
     FILENAME = "streak_history.json"
@@ -40,12 +41,20 @@ class StreakHistoryManager:
         except Exception as e:
             print(f"Error saving streak history to {self.path}: {e}")
 
+    def get_last_day(self) -> str:
+        if not self.days:
+            return None
+        return max(self.days)
+        
     def add_day(self, date_str: str):
         if date_str not in self.days:
             self.days.add(date_str)
             self.save()
 
     def get_time_spent_for_date(self, check_date: date) -> int:
+        if not mw or not mw.col:
+            print("AnkiStreak: Collection not available, skipping get_time_spent_for_date.")
+            return
         
         cutoff_timestamp = mw.col.sched.day_cutoff 
         cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
@@ -62,36 +71,64 @@ class StreakHistoryManager:
 
         return time_spent_ms
 
+    def import_reviewed_days_with_spinner(self):
+        print("import_reviewed_days_with_spinner")
+        from ..ui.progress_runner import ProgressRunner
+        streak_manager = get_streak_manager()
+        ProgressRunner(self.mw).run_with_progress(            
+            "Processando histórico...",
+            self.import_reviewed_days_from_log,
+            streak_manager.recalculate_streak_with_spinner()
+        )
+
     def import_reviewed_days_from_log(self):
-        if not mw.col:
-            print("AnkiStreak: Collection not available for revlog import (unexpected).")
-            return
-        
-        print(f"import_reviewed_days_from_log do StreakHistoryManager.py")
+        try:
+            if not mw.col:
+                print("AnkiStreak: Collection not available for revlog import (unexpected).")
+                return
+            
+            print(f"import_reviewed_days_from_log do StreakHistoryManager.py")
 
-        result = mw.col.db.all("SELECT id FROM revlog")
-        current_days_count = len(self.days)
+            last_day = self.get_last_day()
+            if last_day:
+                last_dt = datetime.strptime(last_day, "%Y-%m-%d")
+                cutoff_timestamp = mw.col.sched.day_cutoff
+                cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
+                offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second
+                start_ts = int(last_dt.timestamp() + offset_seconds) * 1000
+            else:
+                start_ts = 0
 
-        for revlog_id, in result:           
-            ts = revlog_id / 1000            
-            cutoff_timestamp = mw.col.sched.day_cutoff 
-            cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
-            offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second          
-            date_obj = datetime.fromtimestamp(ts - offset_seconds)
-            date_str = date_obj.strftime("%Y-%m-%d")
-                
-            total_time_ms = self.get_time_spent_for_date(date_obj)
-            total_time_min = round(total_time_ms / 60000, 1)
+            query = "SELECT id FROM revlog WHERE id > ?"
+            result = mw.col.db.all(query, start_ts)
+            current_days_count = len(self.days)
 
-            if total_time_min < MINIMUM_TIME_SPENT:
-                continue
+            for revlog_id, in result:
+                print(f"import_reviewed_days_from_log analisando... revlog_id: {revlog_id}")           
+                ts = revlog_id / 1000            
+                cutoff_timestamp = mw.col.sched.day_cutoff 
+                cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
+                offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second          
+                date_obj = datetime.fromtimestamp(ts - offset_seconds)
+                date_str = date_obj.strftime("%Y-%m-%d")
+                    
+                total_time_ms = self.get_time_spent_for_date(date_obj)
+                total_time_min = round(total_time_ms / 60000, 1)
 
-            if date_str not in self.days:
-                self.days.add(date_str)
+                if total_time_min < MINIMUM_TIME_SPENT:
+                    continue
 
-        added = len(self.days) - current_days_count
-        if added > 0:
-            print(f"[StreakHistory] Added {len(self.days) - current_days_count} new day(s) from review log.")
+                if date_str not in self.days:
+                    self.days.add(date_str)
 
+            added = len(self.days) - current_days_count
+            if added > 0:
+                print(f"[StreakHistory] Added {added} new day(s) from review log.")
+
+            print(f"import_reviewed_days_from_log concluído")
+        except Exception as e:
+            print(f"AnkiStreak: Error in get_time_spent_for_date: {e}")
+            return 0
+            
     def get_streak_days(self) -> Set[str]:
         return self.days
