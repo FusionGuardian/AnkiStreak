@@ -4,12 +4,13 @@ from datetime import datetime, timedelta, date
 from aqt import mw, gui_hooks
 from typing import Set
 
-MINIMUM_TIME_SPENT = 5
+MINIMUM_TIME_SPENT = 8
 
 class StreakHistoryManager:
     FILENAME = "streak_history.json"
 
     def __init__(self):
+        print(f"__init__ do StreakHistoryManager.py")
         self.path = os.path.join(mw.pm.addonFolder(), "addon", self.FILENAME)
         self.days = set()
         self.load()
@@ -17,11 +18,13 @@ class StreakHistoryManager:
         gui_hooks.profile_did_open.append(self._on_profile_open)
 
     def _on_profile_open(self):
-        self.import_reviewed_days_from_log()
+        print(f"_on_profile_open do StreakHistoryManager.py")
+        #self.import_reviewed_days_from_log()
         self.save()
 
     def load(self):
         try:
+            print(f"load do StreakHistoryManager.py")
             if os.path.exists(self.path):
                 with open(self.path, "r") as f:
                     self.days = set(json.load(f))
@@ -63,6 +66,8 @@ class StreakHistoryManager:
         if not mw.col:
             print("AnkiStreak: Collection not available for revlog import (unexpected).")
             return
+        
+        print(f"import_reviewed_days_from_log do StreakHistoryManager.py")
 
         result = mw.col.db.all("SELECT id FROM revlog")
         current_days_count = len(self.days)
