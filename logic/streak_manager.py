@@ -150,14 +150,14 @@ class StreakManager:
         #TaskThread.run_with_progress(self.mw, "Processando...", self._calculate_streak_only, self._update_toolbar)
         #TaskThread.run_with_progress(self.mw, "Testando...", self.fake_func, self.finished)
         ProgressRunner(self.mw).run_with_progress(            
-            "Processando streaks...",
+            "Analyzing history...",
             self._calculate_streak_only,
             callback or self._update_toolbar
         )
 
-    def _cleanup_streak_thread(self):
+    #def _cleanup_streak_thread(self):
         # Limpa a referência para permitir GC
-        self._streak_thread = None
+    #    self._streak_thread = None
 
     def _update_toolbar(self):
         from ..ui.icon import get_base64_icon_data
@@ -292,7 +292,7 @@ class StreakManager:
             }
         return details
 
-    def _calculate_streak_only(self):
+    def _calculate_streak_only(self, progress_callback=None):
         try:
             if self.data is None:
                 self.data = self._load_data()
@@ -314,7 +314,7 @@ class StreakManager:
             #prev_streak = len(actual_reviewed_dates_before)
 
             ## Atualiza o histórico a partir do banco (sincroniza com outros dispositivos)
-            self.streak_history.import_reviewed_days_from_log()
+            self.streak_history.import_reviewed_days_from_log(progress_callback=progress_callback)
             self.streak_history.save()
             
             ## Dias ativos depois da importação

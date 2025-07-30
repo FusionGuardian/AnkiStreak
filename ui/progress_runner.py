@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QProgressDialog, QApplication
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 
 class ProgressThread(QThread):
+    progress = pyqtSignal(str)
     finished = pyqtSignal()
 
     def __init__(self, target, *args, **kwargs):
@@ -11,6 +12,9 @@ class ProgressThread(QThread):
         self.kwargs = kwargs
 
     def run(self):
+        def progress_callback(text):
+            self.progress.emit(text)
+        self.kwargs['progress_callback'] = progress_callback
         self.target(*self.args, **self.kwargs)
         self.finished.emit()
 
@@ -20,7 +24,7 @@ class ProgressRunner:
     def __new__(cls, mw=None):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance.mw = mw or mw  # mw global do Anki
+            cls._instance.mw = mw or mw
         return cls._instance
 
     def run_with_progress(self, title, target, on_finish=None, *args, **kwargs):
@@ -34,6 +38,7 @@ class ProgressRunner:
         QApplication.processEvents()
 
         worker = ProgressThread(target, *args, **kwargs)
+        worker.progress.connect(lambda text: progress.setLabelText(f"{title}\n{text}"))
         worker.finished.connect(progress.close)
         if on_finish:
             worker.finished.connect(on_finish)

@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta, date
 from aqt import mw, gui_hooks
 from typing import Set
+import locale  # Import necessário para localização
 
 
 MINIMUM_TIME_SPENT = 14 # minutos
@@ -71,23 +72,26 @@ class StreakHistoryManager:
 
         return time_spent_ms
 
-    def import_reviewed_days_with_spinner(self):
-        print("import_reviewed_days_with_spinner")
-        from ..ui.progress_runner import ProgressRunner
-        streak_manager = get_streak_manager()
-        ProgressRunner(self.mw).run_with_progress(            
-            "Processando histórico...",
-            self.import_reviewed_days_from_log,
-            streak_manager.recalculate_streak_with_spinner()
-        )
+    #def import_reviewed_days_with_spinner(self):
+    #    print("import_reviewed_days_with_spinner")
+    #    from ..ui.progress_runner import ProgressRunner
+    #    streak_manager = get_streak_manager()
+    #    ProgressRunner(self.mw).run_with_progress(            
+    #        "Analyzing history...",
+    #        self.import_reviewed_days_from_log,
+    #        streak_manager.recalculate_streak_with_spinner()
+    #    )
 
-    def import_reviewed_days_from_log(self):
+    def import_reviewed_days_from_log(self, progress_callback=None):
         try:
             if not mw.col:
                 print("AnkiStreak: Collection not available for revlog import (unexpected).")
                 return
             
             print(f"import_reviewed_days_from_log do StreakHistoryManager.py")
+
+            # Configura a localização para o formato de data do sistema
+            locale.setlocale(locale.LC_TIME, '')
 
             last_day = self.get_last_day()
             if last_day:
@@ -110,8 +114,15 @@ class StreakHistoryManager:
                 cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
                 offset_seconds = cutoff_datetime.hour * 3600 + cutoff_datetime.minute * 60 + cutoff_datetime.second          
                 date_obj = datetime.fromtimestamp(ts - offset_seconds)
-                date_str = date_obj.strftime("%Y-%m-%d")
-                    
+
+                # Formata a data no formato localizado                
+                date_str = date_obj.strftime("%Y-%m-%d")  # %x usa o formato de data localizado                
+
+                if progress_callback:
+                    locale.setlocale(locale.LC_TIME, '')  # Define a localização do sistema
+                    date_locale_str = date_obj.strftime("%x")
+                    progress_callback(f"({date_locale_str})")
+
                 total_time_ms = self.get_time_spent_for_date(date_obj)
                 total_time_min = round(total_time_ms / 60000, 1)
 
