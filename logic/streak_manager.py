@@ -164,30 +164,10 @@ class StreakManager:
             self.data = self._load_data()
         return self.data["current_streak_length"] if self.data else 0
 
-    def get_streak_freezes_available(self) -> int:
-        if self.data is None:
-            self.recalculate_streak_with_spinner()
-        return len(self.data["earned_freeze_dates"]) if self.data else 0
-
     def get_consumed_freeze_dates(self) -> List[str]:
         if self.data is None:
-            self.recalculate_streak_with_spinner()
+            self.data = self._load_data()
         return self.data["consumed_freeze_dates"] if self.data else []
-
-    def get_earned_freeze_dates(self) -> List[str]:
-        if self.data is None:
-            self.recalculate_streak_with_spinner()
-        return self.data["earned_freeze_dates"] if self.data else []
-
-    def get_last_active_day(self) -> Union[str, None]:
-        if self.data is None:
-            self.recalculate_streak_with_spinner()
-        return self.data["last_active_day"] if self.data else None
-
-    def get_days_since_last_freeze(self) -> int:
-        if self.data is None:
-            self.recalculate_streak_with_spinner()
-        return self.data.get("days_since_last_freeze", 0)
 
     def has_reviewed_today(self) -> bool:
         try:
@@ -373,7 +353,7 @@ class StreakManager:
         
         actual_reviewed_dates = self.streak_history.get_streak_days()
         logging.info("check_review_streak_change disparado")
-        logging.info("[AnkiStreak] Dias ativos retornados pelo StreakHistoryManager antes: %s", actual_reviewed_dates)
+        #logging.info("[AnkiStreak] Dias ativos retornados pelo StreakHistoryManager antes: %s", actual_reviewed_dates)
         logging.info("total_time_ms:%s", total_time_ms)
         minimumTimeSpent = MINIMUM_TIME_SPENT * 60_000
         logging.info("minimumTimeSpent:%s", minimumTimeSpent)

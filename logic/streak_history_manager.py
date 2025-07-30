@@ -1,18 +1,19 @@
 import os
 import json
+import logging
 from datetime import datetime, timedelta, date
 from aqt import mw, gui_hooks
 from typing import Set
 import locale  # Import necessário para localização
 
 
-MINIMUM_TIME_SPENT = 14 # minutos
+MINIMUM_TIME_SPENT = 5 # minutos
 
 class StreakHistoryManager:
     FILENAME = "streak_history.json"
 
     def __init__(self):
-        print(f"__init__ do StreakHistoryManager.py")
+        logging.info("__init__ do StreakHistoryManager.py")
         self.path = os.path.join(mw.pm.addonFolder(), "addon", self.FILENAME)
         self.days = set()
         self.load()
@@ -20,17 +21,17 @@ class StreakHistoryManager:
         gui_hooks.profile_did_open.append(self._on_profile_open)
 
     def _on_profile_open(self):
-        print(f"_on_profile_open do StreakHistoryManager.py")
+        logging.info("_on_profile_open do StreakHistoryManager.py")
         self.save()
 
     def load(self):
         try:
-            print(f"load do StreakHistoryManager.py")
+            logging.info("load do StreakHistoryManager.py")
             if os.path.exists(self.path):
                 with open(self.path, "r") as f:
                     self.days = set(json.load(f))
         except Exception as e:
-            print(f"Error loading streak history from {self.path}: {e}")
+            logging.error(f"Error loading streak history from {self.path}: {e}")
             self.days = set()
 
     def save(self):
@@ -39,7 +40,7 @@ class StreakHistoryManager:
             with open(self.path, "w") as f:
                 json.dump(sorted(list(self.days)), f)
         except Exception as e:
-            print(f"Error saving streak history to {self.path}: {e}")
+            logging.error(f"Error saving streak history to {self.path}: {e}")
 
     def get_last_day(self) -> str:
         if not self.days:
@@ -53,7 +54,7 @@ class StreakHistoryManager:
 
     def get_time_spent_for_date(self, check_date: date) -> int:
         if not mw or not mw.col:
-            print("AnkiStreak: Collection not available, skipping get_time_spent_for_date.")
+            logging.info("AnkiStreak: Collection not available, skipping get_time_spent_for_date.")
             return
         
         cutoff_timestamp = mw.col.sched.day_cutoff 
@@ -74,10 +75,10 @@ class StreakHistoryManager:
     def import_reviewed_days_from_log(self, progress_callback=None):
         try:
             if not mw.col:
-                print("AnkiStreak: Collection not available for revlog import (unexpected).")
+                logging.info("AnkiStreak: Collection not available for revlog import (unexpected).")
                 return
             
-            print(f"import_reviewed_days_from_log do StreakHistoryManager.py")
+            logging.info("import_reviewed_days_from_log do StreakHistoryManager.py")
 
             # Configura a localização para o formato de data do sistema
             locale.setlocale(locale.LC_TIME, '')
@@ -97,7 +98,7 @@ class StreakHistoryManager:
             current_days_count = len(self.days)
 
             for revlog_id, in result:
-                print(f"import_reviewed_days_from_log analisando... revlog_id: {revlog_id}")           
+                logging.info(f"import_reviewed_days_from_log analisando... revlog_id: {revlog_id}")           
                 ts = revlog_id / 1000            
                 cutoff_timestamp = mw.col.sched.day_cutoff 
                 cutoff_datetime = datetime.fromtimestamp(cutoff_timestamp)
@@ -123,11 +124,11 @@ class StreakHistoryManager:
 
             added = len(self.days) - current_days_count
             if added > 0:
-                print(f"[StreakHistory] Added {added} new day(s) from review log.")
+                logging.info(f"[StreakHistory] Added {added} new day(s) from review log.")
 
-            print(f"import_reviewed_days_from_log concluído")
+            logging.info("import_reviewed_days_from_log concluído")
         except Exception as e:
-            print(f"AnkiStreak: Error in get_time_spent_for_date: {e}")
+            logging.error(f"AnkiStreak: Error in get_time_spent_for_date: {e}")
             return 0
             
     def get_streak_days(self) -> Set[str]:
