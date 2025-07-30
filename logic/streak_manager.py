@@ -164,6 +164,17 @@ class StreakManager:
             self.data = self._load_data()
         return self.data["current_streak_length"] if self.data else 0
 
+    def get_streak_freezes_available(self) -> int:
+        if self.data is None:
+            self.data = self._load_data()
+        return len(self.data["earned_freeze_dates"]) if self.data else 0
+
+    def get_days_since_last_freeze(self) -> int:
+        if self.data is None:
+            self.data = self._load_data()
+        return self.data.get("days_since_last_freeze", 0)        
+
+
     def get_consumed_freeze_dates(self) -> List[str]:
         if self.data is None:
             self.data = self._load_data()

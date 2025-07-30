@@ -21,11 +21,11 @@ AnkiStreak is a motivational add-on for [Anki](https://apps.ankiweb.net/) that h
 
 **Streak Freezes** 
   - Automatically used on a day you forget to review
-  -  Earn a new freeze for every 1,000 cards you review
+  - Earn a new freeze for every 5 days of studying, with at least 5 minutes per day
 
 
 **Animations** 
-  - Get a rewarding animation pop-up after your first review of the day.
+  - Get a rewarding animation pop-up when your streak increases, even on another device (shown after sync)
 
 
 **Share Your Progress** 
