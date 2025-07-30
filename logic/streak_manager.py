@@ -155,10 +155,6 @@ class StreakManager:
             callback or self._update_toolbar
         )
 
-    #def _cleanup_streak_thread(self):
-        # Limpa a referência para permitir GC
-    #    self._streak_thread = None
-
     def _update_toolbar(self):
         from ..ui.icon import get_base64_icon_data
 

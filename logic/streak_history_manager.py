@@ -72,16 +72,6 @@ class StreakHistoryManager:
 
         return time_spent_ms
 
-    #def import_reviewed_days_with_spinner(self):
-    #    print("import_reviewed_days_with_spinner")
-    #    from ..ui.progress_runner import ProgressRunner
-    #    streak_manager = get_streak_manager()
-    #    ProgressRunner(self.mw).run_with_progress(            
-    #        "Analyzing history...",
-    #        self.import_reviewed_days_from_log,
-    #        streak_manager.recalculate_streak_with_spinner()
-    #    )
-
     def import_reviewed_days_from_log(self, progress_callback=None):
         try:
             if not mw.col:

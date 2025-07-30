@@ -42,12 +42,6 @@ def get_today_study_time_ms():
     
     return total_time_ms or 0
 
-
-def calculate_animation_bounds(current_streak):
-    prev = max(current_streak, 0)
-    curr = max(current_streak  + 1, 1)
-    return prev, curr
-
 def _on_profile_open():
     try:
         print(f"_on_profile_open do __init__.py")
@@ -117,9 +111,6 @@ def _on_sync_finish():
 gui_hooks.sync_did_finish.append(_on_sync_finish)
 
 gui_hooks.reviewer_did_answer_card.append(_on_review)
-
-def open_streak_popup():
-    open_streak_popup_with_manager(mw)
 
 def _on_profile_close():
     global is_closing_profile
