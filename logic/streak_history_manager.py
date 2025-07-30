@@ -21,7 +21,6 @@ class StreakHistoryManager:
 
     def _on_profile_open(self):
         print(f"_on_profile_open do StreakHistoryManager.py")
-        #self.import_reviewed_days_from_log()
         self.save()
 
     def load(self):
